@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>六張算術 - 對戰版</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      background: #f0f5ff;
+      margin: 0;
+      padding: 16px;
+      color: #333;
+      touch-action: manipulation;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-top: 0;
+      font-size: 24px;
+    }
+
+    /* 對戰資訊 */
+    .battle-info {
+      text-align: center;
+      margin: 10px 0;
+      font-weight: bold;
+      color: #e17055;
+    }
+    .opponent-status {
+      background: #f8f9fa;
+      padding: 8px;
+      border-radius: 6px;
+      margin: 8px 0;
+      font-size: 14px;
+    }
+
+    /* 計分與計時 */
+    .score-time {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-weight: bold;
+      align-items: center;
+    }
+    .timer-setting {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .timer-bar {
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .timer-fill {
+      height: 100%;
+      background: #0984e3;
+      width: 100%;
+      transition: width 0.1s linear;
+    }
+
+    /* 目標卡 */
+    .target-row {
+      display: flex;
+      justify-content: center;
+      margin: 12px 0;
+    }
+    .target-card {
+      width: 60px;
+      height: 76px;
+      border: 2px solid #d63031;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      background: #ffeaa7;
+    }
+
+    /* 手牌區 */
+    .hand-area {
+      min-height: 100px;
+      margin: 12px 0;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .card {
+      width: 56px;
+      height: 76px;
+      border: 2px solid #333;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      background: white;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: all 0.2s;
+    }
+
+    .card.selected-first {
+      border-color: #0984e3;
+      transform: scale(1.05);
+      box-shadow: 0 0 12px rgba(9, 132, 227, 0.6);
+    }
+
+    .card.new-glow {
+      animation: newCardGlow 1.2s ease-out;
+    }
+
+    @keyframes newCardGlow {
+      0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+      50% { box-shadow: 0 0 16px 4px rgba(40, 167, 69, 0.8); }
+      100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+    }
+
+    /* 運算選單 */
+    .operator-menu {
+      display: none;
+      justify-content: center;
+      gap: 10px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+    .op-btn {
+      width: 48px;
+      height: 48px;
+      font-size: 20px;
+      font-weight: bold;
+      border: none;
+      border-radius: 50%;
+      background: #0984e3;
+      color: white;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cancel-btn {
+      padding: 8px 16px;
+      background: #ff7675;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 16px 0;
+    }
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #0984e3;
+      color: white;
+      font-weight: bold;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #hintBtn { background: #00b894; }
+    #nextBtn { background: #fdcb6e; color: #2d3436; }
+    #resetBtn { background: #a29bfe; }
+    #helpBtn { background: #6c5ce7; }
+
+    .message {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .success { background: #d5f4e6; color: #00a86b; }
+    .error { background: #ffdddd; color: #d63031; }
+    .info { background: #e3f2fd; color: #0984e3; }
+
+    /* 玩法說明 Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.6);
+      overflow: auto;
+    }
+    .modal-content {
+      background-color: #fff;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 500px;
+      margin-left: 16px;
+      margin-right: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .instructions h2 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+    .instructions ul {
+      padding-left: 20px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🃏 六張算術 - 對戰版</h1>
+    
+    <!-- 對戰房間 -->
+    <div class="battle-info" id="battleInfo">等待對手加入...</div>
+    <div class="opponent-status" id="opponentStatus">對手狀態：未連線</div>
+    
+    <!-- 計分與計時 -->
+    <div class="score-time">
+      <div>🏆 你的分數: <span id="score">0</span></div>
+      <div class="timer-setting">
+        <label for="timeSelect">⏱️ 時間:</label>
+        <select id="timeSelect" onchange="changeTimeLimit()" disabled>
+          <option value="10">10 秒</option>
+          <option value="15">15 秒</option>
+          <option value="20">20 秒</option>
+          <option value="30">30 秒</option>
+        </select>
+        <span id="timeLeft">10</span>s
+      </div>
+    </div>
+    <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+
+    <div class="target-row">
+      <div class="target-card" id="targetCard">?</div>
+    </div>
+    <div class="hand-area" id="handArea"></div>
+    
+    <div class="operator-menu" id="operatorMenu">
+      <button class="op-btn" onclick="selectOperator('+')">+</button>
+      <button class="op-btn" onclick="selectOperator('−')">−</button>
+      <button class="op-btn" onclick="selectOperator('×')">×</button>
+      <button class="op-btn" onclick="selectOperator('÷')">÷</button>
+      <button class="cancel-btn" onclick="cancelSelection()">取消</button>
+    </div>
+
+    <div class="buttons">
+      <button id="hintBtn" onclick="showHint()">提示</button>
+      <button id="nextBtn" onclick="newGame()" disabled>換一題</button>
+      <button id="resetBtn" onclick="resetHand()">重來</button>
+      <button id="helpBtn" onclick="openInstructions()">玩法說明</button>
+    </div>
+    <div id="message" class="message info">🎯 點擊第一張卡牌！</div>
+  </div>
+
+  <!-- 玩法說明 Modal -->
+  <div id="instructionsModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeInstructions()">&times;</span>
+      <div class="instructions">
+        <h2>🎮 對戰玩法</h2>
+        <ul>
+          <li><strong>規則</strong>：雙方玩相同題目，先算出正確答案者獲勝</li>
+          <li><strong>操作</strong>：
+            <br>1. 點擊第一張卡
+            <br>2. 選擇運算符
+            <br>3. 點擊第二張卡
+          </li>
+          <li><strong>限制</strong>：
+            <br>• 不能負數
+            <br>• 除法必須整除
+          </li>
+        </ul>
+        <p style="text-align:center; margin-top:16px;">
+          <button onclick="closeInstructions()" style="padding:8px 16px; background:#0984e3; color:white; border:none; border-radius:6px;">
+            開始對戰！
+          </button>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+  <script>
+    // 🔥 TODO: 替換為你的 Firebase 設定
+    const firebaseConfig = {
+      apiKey: "AIzaSyDKhY2D5EES-01B4YQ2iymfKa2V6GrfcFU",
+      authDomain: "card-math.firebaseapp.com",
+      databaseURL: "https://card-math-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "card-math",
+      storageBucket: "card-math.firebasestorage.app",
+      messagingSenderId: "429102092258",
+      appId: "1:429102092258:web:5451d782914285b6de33bb"
+    };
+
+    // 初始化 Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // === 遊戲狀態 ===
+    let currentTarget = null;
+    let originalHand = [];
+    let selectedCard1 = null;
+    let selectedOperator = null;
+    let score = 0;
+    let timeLeft = 10;
+    let timer = null;
+    let currentTimeLimit = 10;
+    let isGameActive = false;
+    let roomId = null;
+    let playerId = null;
+    let opponentId = null;
+    let moveCount = 0;
+
+    // 生成隨機房間 ID
+    function generateRoomId() {
+      return Math.random().toString(36).substr(2, 6).toUpperCase();
+    }
+
+    // 連接到房間
+    function joinRoom(roomId) {
+      this.roomId = roomId;
+      playerId = 'player_' + Date.now();
+      
+      const roomRef = database.ref('rooms/' + roomId);
+      
+      // 監聽房間狀態
+      roomRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) {
+          // 房間不存在，創建新遊戲
+          createNewGame();
+          roomRef.set({
+            players: { [playerId]: true },
+            gameState: 'waiting',
+            puzzle: null
+          });
+          document.getElementById('battleInfo').textContent = `房間代號: ${roomId} (等待對手...)`;
+        } else {
+          const playerCount = Object.keys(data.players || {}).length;
+          if (playerCount >= 2) {
+            document.getElementById('battleInfo').textContent = `對戰中! 房間: ${roomId}`;
+            if (data.gameState === 'active' && data.puzzle) {
+              startBattleGame(data.puzzle);
+            }
+          } else {
+            document.getElementById('battleInfo').textContent = `房間代號: ${roomId} (等待對手...)`;
+          }
+          
+          // 記錄對手 ID
+          for (let id in data.players) {
+            if (id !== playerId) {
+              opponentId = id;
+              break;
+            }
+          }
+        }
+      });
+
+      // 監聽對手動作
+      roomRef.child('moves').on('child_added', (snapshot) => {
+        const move = snapshot.val();
+        if (move.playerId !== playerId) {
+          updateOpponentStatus(move.moveCount);
+        }
+      });
+    }
+
+    // 創建新遊戲
+    function createNewGame() {
+      const PUZZLE_BANK = [
+        { ops: [13, 1, 1, 1, 1], target: 10 },
+        { ops: [6, 2, 2, 1, 1], target: 10 },
+        { ops: [8, 2, 2, 1, 1], target: 10 },
+        { ops: [12, 3, 2, 1, 1], target: 10 },
+        { ops: [10, 2, 2, 1, 1], target: 13 }
+      ];
+      const p = PUZZLE_BANK[Math.floor(Math.random() * PUZZLE_BANK.length)];
+      
+      // 廣播遊戲開始
+      database.ref('rooms/' + roomId).update({
+        gameState: 'active',
+        puzzle: p,
+        startTime: firebase.database.ServerValue.TIMESTAMP
+      });
+      
+      startBattleGame(p);
+    }
+
+    // 開始對戰遊戲
+    function startBattleGame(puzzle) {
+      currentTarget = puzzle.target;
+      originalHand = [...puzzle.ops];
+      document.getElementById('targetCard').textContent = valueToDisplay(currentTarget);
+
+      const handArea = document.getElementById('handArea');
+      handArea.innerHTML = '';
+      for (let i = 0; i < puzzle.ops.length; i++) {
+        handArea.appendChild(createCard(puzzle.ops[i]));
+      }
+
+      clearSelection();
+      startTimer();
+      showMessage('🎯 對戰開始！先算出答案者獲勝！', 'info');
+      
+      // 啟用按鈕
+      document.getElementById('timeSelect').disabled = true;
+      document.getElementById('nextBtn').disabled = true;
+    }
+
+    // === 工具函數 ===
+    const VALUE_TO_RANK = {1:'A',2:'2',3:'3',4:'4',5:'5',6:'6',7:'7',8:'8',9:'9',10:'10',11:'J',12:'Q',13:'K'};
+    const SUITS = ['♠','♥','♦','♣'];
+
+    function getRandomSuit() {
+      return SUITS[Math.floor(Math.random() * SUITS.length)];
+    }
+
+    function valueToDisplay(value) {
+      if (value >= 1 && value <= 13) {
+        return VALUE_TO_RANK[value] + getRandomSuit();
+      }
+      return String(Math.round(value * 100) / 100);
+    }
+
+    function createCard(value, isNew = false) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      if (isNew) card.classList.add('new-glow');
+      card.textContent = valueToDisplay(value);
+      card.dataset.value = value;
+      card.id = 'card-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      card.onclick = (e) => {
+        e.stopPropagation();
+        selectCard(card);
+      };
+      return card;
+    }
+
+    // === 核心邏輯 ===
+    function selectCard(card) {
+      if (!isGameActive) return;
+      
+      if (selectedOperator !== null) {
+        if (card === selectedCard1) {
+          showMessage('不能與自己運算！', 'error');
+          return;
+        }
+        performCalculation(card);
+        return;
+      }
+
+      if (selectedCard1 === null) {
+        selectedCard1 = card;
+        card.classList.add('selected-first');
+        document.getElementById('operatorMenu').style.display = 'flex';
+        showMessage('已選擇第一張卡，請選擇運算符', 'info');
+        return;
+      }
+
+      if (card === selectedCard1) {
+        clearSelection();
+        showMessage('已取消選擇', 'info');
+        return;
+      }
+
+      showMessage('請先選擇運算符！', 'error');
+    }
+
+    function selectOperator(op) {
+      if (selectedCard1 === null || !isGameActive) return;
+      selectedOperator = op;
+      showMessage('已選擇 "' + op + '"，請點擊第二張卡', 'info');
+    }
+
+    function performCalculation(secondCard) {
+      if (!isGameActive) return;
+      
+      const val1 = parseFloat(selectedCard1.dataset.value);
+      const val2 = parseFloat(secondCard.dataset.value);
+      let result;
+
+      switch(selectedOperator) {
+        case '+': result = val1 + val2; break;
+        case '−': result = val1 - val2; break;
+        case '×': result = val1 * val2; break;
+        case '÷':
+          if (Math.abs(val2) < 1e-9) {
+            showMessage('❌ 不能除以零！', 'error');
+            clearSelection();
+            return;
+          }
+          if (Math.abs(val1 % val2) > 1e-9) {
+            showMessage('❌ 除法結果必須為整數！', 'error');
+            clearSelection();
+            return;
+          }
+          result = val1 / val2;
+          break;
+        default:
+          clearSelection();
+          return;
+      }
+
+      if (result < 0) {
+        showMessage('❌ 結果不能為負數！', 'error');
+        clearSelection();
+        return;
+      }
+
+      // 移除卡牌
+      selectedCard1.remove();
+      secondCard.remove();
+
+      // 新增結果卡
+      const newCard = createCard(result, true);
+      document.getElementById('handArea').appendChild(newCard);
+
+      clearSelection();
+      moveCount++;
+      
+      // 同步動作到 Firebase
+      if (roomId) {
+        database.ref('rooms/' + roomId + '/moves').push({
+          playerId: playerId,
+          moveCount: moveCount,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+      }
+
+      // 檢查是否完成
+      const remainingCards = document.querySelectorAll('.card');
+      if (remainingCards.length === 1) {
+        const finalValue = parseFloat(remainingCards[0].dataset.value);
+        if (Math.abs(finalValue - currentTarget) < 1e-6) {
+          // 廣播勝利
+          if (roomId) {
+            database.ref('rooms/' + roomId + '/winner').set({
+              playerId: playerId,
+              timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+          }
+          showMessage('🎉 你贏了！', 'success');
+          clearInterval(timer);
+          isGameActive = false;
+        } else {
+          showMessage('❌ 結果錯誤！', 'error');
+          clearInterval(timer);
+          isGameActive = false;
+        }
+      }
+    }
+
+    // === 計時系統 ===
+    function startTimer() {
+      if (timer) clearInterval(timer);
+      timeLeft = currentTimeLimit;
+      isGameActive = true;
+      updateTimerUI();
+      
+      timer = setInterval(() => {
+        timeLeft--;
+        updateTimerUI();
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          isGameActive = false;
+          showMessage('⏰ 時間到！', 'error');
+        }
+      }, 1000);
+    }
+
+    function updateTimerUI() {
+      const timeElement = document.getElementById('timeLeft');
+      if (timeElement) timeElement.textContent = timeLeft;
+      
+      const fill = document.getElementById('timerFill');
+      if (fill) {
+        const percent = Math.max(0, timeLeft / currentTimeLimit * 100);
+        fill.style.width = percent + '%';
+        if (timeLeft <= Math.ceil(currentTimeLimit * 0.3)) {
+          fill.style.background = '#d63031';
+        } else {
+          fill.style.background = '#0984e3';
+        }
+      }
+    }
+
+    // === 對手狀態更新 ===
+    function updateOpponentStatus(count) {
+      document.getElementById('opponentStatus').textContent = `對手狀態：已合併 ${count} 次`;
+    }
+
+    // === 其他函數 ===
+    function clearSelection() {
+      if (selectedCard1) {
+        selectedCard1.classList.remove('selected-first');
+        selectedCard1 = null;
+      }
+      selectedOperator = null;
+      document.getElementById('operatorMenu').style.display = 'none';
+    }
+
+    function cancelSelection() {
+      clearSelection();
+      showMessage('已取消選擇', 'info');
+    }
+
+    function resetHand() {
+      if (!isGameActive) return;
+      clearSelection();
+      const handArea = document.getElementById('handArea');
+      handArea.innerHTML = '';
+      for (let i = 0; i < originalHand.length; i++) {
+        handArea.appendChild(createCard(originalHand[i]));
+      }
+      startTimer();
+      showMessage('已重設手牌', 'info');
+    }
+
+    function showHint() {
+      showMessage('💡 提示：先選小數字作為第一張卡！', 'info');
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+    }
+
+    function changeTimeLimit() {
+      const select = document.getElementById('timeSelect');
+      const newLimit = parseInt(select.value);
+      if (newLimit !== currentTimeLimit) {
+        currentTimeLimit = newLimit;
+        document.getElementById('timeLeft').textContent = currentTimeLimit;
+      }
+    }
+
+    // === 初始化 ===
+    document.addEventListener('DOMContentLoaded', () => {
+      // 創建或加入房間
+      const urlParams = new URLSearchParams(window.location.search);
+      let roomId = urlParams.get('room');
+      
+      if (!roomId) {
+        roomId = generateRoomId();
+        // 重新導向到帶房間 ID 的 URL
+        window.history.replaceState({}, '', `?room=${roomId}`);
+      }
+      
+      joinRoom(roomId);
+      
+      // 初始化 UI
+      document.getElementById('timeSelect').value = currentTimeLimit.toString();
+      document.getElementById('timeLeft').textContent = currentTimeLimit;
+    });
+
+    // Modal 函數
+    function openInstructions() {
+      document.getElementById('instructionsModal').style.display = 'block';
+    }
+    function closeInstructions() {
+      document.getElementById('instructionsModal').style.display = 'none';
+    }
+    window.onclick = function(event) {
+      const modal = document.getElementById('instructionsModal');
+      if (event.target === modal) closeInstructions();
+    };
+  </script>
+</body>
+</html>
