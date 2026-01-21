@@ -338,6 +338,10 @@
     try {
       firebase.initializeApp(firebaseConfig);
       database = firebase.database();
+      
+      // 🔥 強制重新連線（避免 WebSocket 問題）
+      database.goOffline();
+      database.goOnline();
     } catch (e) {
       console.error("Firebase 初始化失敗:", e);
       document.getElementById('message').textContent = '⚠️ 網路錯誤，請檢查設定';
@@ -573,7 +577,7 @@
       moveCount++;
       
       // 同步動作到 Firebase
-      if (roomId) {
+      if ( roomId) {
         database.ref('rooms/' + roomId + '/moves').push({
           playerId: playerId,
           moveCount: moveCount,
@@ -587,7 +591,7 @@
         const finalValue = parseFloat(remainingCards[0].dataset.value);
         if (Math.abs(finalValue - currentTarget) < 1e-6) {
           // 廣播勝利
-          if (roomId) {
+          if ( roomId) {
             database.ref('rooms/' + roomId + '/winner').set({
               playerId: playerId,
               timestamp: firebase.database.ServerValue.TIMESTAMP
@@ -702,7 +706,7 @@
       const urlParams = new URLSearchParams(window.location.search);
       let roomId = urlParams.get('room');
       
-      if (!roomId) {
+      if (! roomId) {
         roomId = generateRoomId();
         // 重新導向到帶房間 ID 的 URL
         window.history.replaceState({}, '', `?room=${roomId}`);
