@@ -332,8 +332,14 @@
     };
 
     // 初始化 Firebase
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+    try {
+      firebase.initializeApp(firebaseConfig);
+      const database = firebase.database();
+    } catch (e) {
+      console.error("Firebase 初始化失敗:", e);
+      document.getElementById('message').textContent = '⚠️ 網路錯誤，請檢查設定';
+      document.getElementById('message').className = 'message error';
+    }
 
     // === 遊戲狀態 ===
     let currentTarget = null;
@@ -355,7 +361,7 @@
       return Math.random().toString(36).substr(2, 6).toUpperCase();
     }
 
-    // 連接到房間
+    // 🔥 修正版：joinRoom 函數
     function joinRoom(roomId) {
       this.roomId = roomId;
       playerId = 'player_' + Date.now();
@@ -365,32 +371,38 @@
       // 監聽房間狀態
       roomRef.on('value', (snapshot) => {
         const data = snapshot.val();
+        
         if (!data) {
-          // 房間不存在，創建新遊戲
-          createNewGame();
+          // 房間不存在，創建新房間
           roomRef.set({
             players: { [playerId]: true },
             gameState: 'waiting',
             puzzle: null
           });
           document.getElementById('battleInfo').textContent = `房間代號: ${roomId} (等待對手...)`;
+          return;
+        }
+        
+        // 檢查玩家數量
+        const players = data.players || {};
+        const playerIds = Object.keys(players);
+        const playerCount = playerIds.length;
+        
+        if (playerCount >= 2 && data.gameState !== 'active') {
+          // 雙方已加入，開始遊戲
+          createNewGame();
+        } else if (playerCount >= 2 && data.gameState === 'active' && data.puzzle) {
+          // 遊戲已開始，加入現有遊戲
+          startBattleGame(data.puzzle);
         } else {
-          const playerCount = Object.keys(data.players || {}).length;
-          if (playerCount >= 2) {
-            document.getElementById('battleInfo').textContent = `對戰中! 房間: ${roomId}`;
-            if (data.gameState === 'active' && data.puzzle) {
-              startBattleGame(data.puzzle);
-            }
-          } else {
-            document.getElementById('battleInfo').textContent = `房間代號: ${roomId} (等待對手...)`;
-          }
-          
-          // 記錄對手 ID
-          for (let id in data.players) {
-            if (id !== playerId) {
-              opponentId = id;
-              break;
-            }
+          document.getElementById('battleInfo').textContent = `房間代號: ${roomId} (等待對手...)`;
+        }
+        
+        // 記錄對手 ID
+        for (let id in players) {
+          if (id !== playerId) {
+            opponentId = id;
+            break;
           }
         }
       });
@@ -404,7 +416,7 @@
       });
     }
 
-    // 創建新遊戲
+    // 🔥 修正版：createNewGame 函數
     function createNewGame() {
       const PUZZLE_BANK = [
         { ops: [13, 1, 1, 1, 1], target: 10 },
