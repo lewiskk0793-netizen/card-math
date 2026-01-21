@@ -331,10 +331,13 @@
       appId: "1:429102092258:web:5451d782914285b6de33bb"
     };
 
+    // 🔥 修正：database 宣告在全域
+    let database = null;
+
     // 初始化 Firebase
     try {
       firebase.initializeApp(firebaseConfig);
-      const database = firebase.database();
+      database = firebase.database();
     } catch (e) {
       console.error("Firebase 初始化失敗:", e);
       document.getElementById('message').textContent = '⚠️ 網路錯誤，請檢查設定';
@@ -379,7 +382,7 @@
             gameState: 'waiting',
             puzzle: null
           });
-          document.getElementById('battleInfo').textContent = `房間代號: ${roomId} (等待對手...)`;
+          document.getElementById('battleInfo').textContent = `房間代號: ${ roomId} (等待對手...)`;
           return;
         }
         
@@ -395,7 +398,7 @@
           // 遊戲已開始，加入現有遊戲
           startBattleGame(data.puzzle);
         } else {
-          document.getElementById('battleInfo').textContent = `房間代號: ${roomId} (等待對手...)`;
+          document.getElementById('battleInfo').textContent = `房間代號: ${ roomId} (等待對手...)`;
         }
         
         // 記錄對手 ID
@@ -688,6 +691,13 @@
 
     // === 初始化 ===
     document.addEventListener('DOMContentLoaded', () => {
+      // 檢查 Firebase 是否初始化成功
+      if (!database) {
+        document.getElementById('message').textContent = '⚠️ Firebase 未初始化，請檢查設定';
+        document.getElementById('message').className = 'message error';
+        return;
+      }
+      
       // 創建或加入房間
       const urlParams = new URLSearchParams(window.location.search);
       let roomId = urlParams.get('room');
